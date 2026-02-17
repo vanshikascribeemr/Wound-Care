@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+pydantic
+pydantic-settings
+jinja2
+python-dotenv
+openai
+google-generativeai
+jsonpatch
+pytest
+httpx
+python-docx
+pydub
+python-multipart

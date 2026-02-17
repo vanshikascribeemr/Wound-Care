@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+ENV/
+data/
+.vscode/
+.agent/
+*.docx
+*.wav
+transcript_*.txt
+*.log
+.pytest_cache/
+tests/__pycache__/

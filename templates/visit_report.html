@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Visit Report — {{ state.patient_information.patient_name or 'Patient' }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        :root,
+        [data-theme="dark"] {
+            --bg: #06080f;
+            --bg-secondary: #0c1220;
+            --card: rgba(15, 23, 42, 0.7);
+            --card-solid: #0f172a;
+            --accent: #6366f1;
+            --accent-light: #818cf8;
+            --accent-glow: rgba(99, 102, 241, 0.25);
+            --teal: #14b8a6;
+            --teal-glow: rgba(20, 184, 166, 0.15);
+            --rose: #f43f5e;
+            --rose-glow: rgba(244, 63, 94, 0.2);
+            --text: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-dim: #64748b;
+            --border: rgba(148, 163, 184, 0.12);
+            --orb-opacity: 0.08;
+            --radius: 16px;
+        }
+
+        [data-theme="light"] {
+            --bg: #f1f5f9;
+            --bg-secondary: #e2e8f0;
+            --card: rgba(255, 255, 255, 0.85);
+            --card-solid: #ffffff;
+            --accent: #4f46e5;
+            --accent-light: #6366f1;
+            --accent-glow: rgba(79, 70, 229, 0.12);
+            --teal: #0d9488;
+            --teal-glow: rgba(13, 148, 136, 0.1);
+            --rose: #e11d48;
+            --rose-glow: rgba(225, 29, 72, 0.1);
+            --text: #0f172a;
+            --text-secondary: #475569;
+            --text-dim: #94a3b8;
+            --border: rgba(15, 23, 42, 0.08);
+            --orb-opacity: 0.04;
+            --radius: 16px;
+        }
+
+        /* Version selector */
+        .version-selector {
+            position: relative;
+            display: inline-block;
+        }
+
+        .version-btn {
+            background: var(--accent-glow);
+            color: var(--accent-light);
+            border: 1px solid var(--accent);
+            border-radius: 10px;
+            padding: .35rem .75rem;
+            font-size: .78rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all .2s ease;
+        }
+
+        .version-btn:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .version-dropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            background: var(--card-solid);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            min-width: 260px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, .35);
+            z-index: 9999;
+            display: none;
+            overflow: hidden;
+        }
+
+        .version-dropdown.show {
+            display: block;
+            animation: fadeUp .2s ease-out;
+        }
+
+        .version-dropdown-title {
+            padding: .6rem 1rem;
+            font-size: .72rem;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .version-item {
+            padding: .55rem 1rem;
+            font-size: .82rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: background .15s;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+        }
+
+        .version-item:hover {
+            background: var(--accent-glow);
+            color: var(--accent-light);
+        }
+
+        .version-item.active {
+            background: var(--accent-glow);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .version-item .vi-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .version-item.active .vi-dot {
+            box-shadow: 0 0 6px var(--accent);
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 2.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            transition: background .4s, color .4s;
+        }
+
+        /* Ambient orbs */
+        body::before,
+        body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: var(--orb-opacity);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::before {
+            width: 500px;
+            height: 500px;
+            background: var(--accent);
+            top: -100px;
+            left: -100px;
+        }
+
+        body::after {
+            width: 400px;
+            height: 400px;
+            background: var(--teal);
+            bottom: -100px;
+            right: -100px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+            position: relative;
+            z-index: 50;
+            animation: fadeUp 0.5s ease-out;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .theme-toggle {
+            width: 44px;
+            height: 26px;
+            border-radius: 99px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            position: relative;
+            transition: background .3s;
+        }
+
+        .theme-toggle .knob {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            transition: transform .3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .65rem;
+        }
+
+        [data-theme="light"] .theme-toggle .knob {
+            transform: translateX(18px);
+        }
+
+        .page-title {
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--accent-light), var(--teal));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .page-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-top: 0.25rem;
+        }
+
+        .version-tag {
+            font-size: 0.72rem;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--accent-light);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            font-weight: 600;
+        }
+
+        .section {
+            background: var(--card);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.75rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            z-index: 1;
+            animation: fadeUp 0.5s ease-out both;
+        }
+
+        .section:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .section:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+
+        .section:nth-child(4) {
+            animation-delay: 0.3s;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title .icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+
+        .section-title .icon.purple {
+            background: var(--accent-glow);
+        }
+
+        .section-title .icon.teal {
+            background: var(--teal-glow);
+        }
+
+        .section-title .icon.rose {
+            background: var(--rose-glow);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .info-label {
+            font-size: 0.68rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-weight: 600;
+        }
+
+        .info-value {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        /* Table */
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: var(--bg-secondary);
+            padding: 0.8rem 1rem;
+            text-align: left;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-dim);
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        td:first-child {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(99, 102, 241, 0.03);
+        }
+
+        /* Summary cards */
+        .summary-card {
+            border-left: 3px solid var(--accent);
+            padding: 1rem 1.25rem;
+            background: var(--bg-secondary);
+            border-radius: 0 10px 10px 0;
+            margin-bottom: 0.75rem;
+            transition: all 0.25s;
+        }
+
+        .summary-card:hover {
+            border-left-color: var(--teal);
+            transform: translateX(4px);
+        }
+
+        .summary-card strong {
+            font-size: 0.9rem;
+        }
+
+        .summary-card p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 0.35rem;
+            line-height: 1.6;
+        }
+
+        /* Floating actions */
+        .fab-group {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            gap: 0.75rem;
+            z-index: 1000;
+        }
+
+        .fab {
+            border: none;
+            border-radius: 50px;
+            padding: 0.9rem 1.5rem;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: #fff;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.25s cubic-bezier(.4, 0, .2, 1);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .fab:hover {
+            transform: translateY(-3px) scale(1.03);
+        }
+
+        .fab-download {
+            background: linear-gradient(135deg, var(--accent), #4f46e5);
+        }
+
+        .fab-download:hover {
+            box-shadow: 0 8px 30px var(--accent-glow);
+        }
+
+        .fab-addendum {
+            background: linear-gradient(135deg, var(--rose), #e11d48);
+        }
+
+        .fab-addendum:hover {
+            box-shadow: 0 8px 30px var(--rose-glow);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 1001;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--card-solid);
+            width: 90%;
+            max-width: 500px;
+            padding: 2rem;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.35s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        .modal h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .modal .sub {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-bottom: 1rem;
+        }
+
+        .modal textarea {
+            width: 100%;
+            height: 140px;
+            background: var(--bg-secondary);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem;
+            font-family: inherit;
+            font-size: 0.85rem;
+            resize: vertical;
+            transition: border-color 0.25s;
+        }
+
+        .modal textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .modal-actions button {
+            flex: 1;
+            padding: 0.7rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-family: inherit;
+            border: none;
+            transition: all 0.25s;
+        }
+
+        .modal-actions .submit-btn {
+            background: linear-gradient(135deg, var(--accent), #4f46e5);
+            color: #fff;
+        }
+
+        .modal-actions .submit-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px var(--accent-glow);
+        }
+
+        .modal-actions .cancel-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .modal-actions .cancel-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent-light);
+        }
+
+        .footer {
+            text-align: right;
+            margin-top: 2rem;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            position: relative;
+            z-index: 1;
+            animation: fadeUp 0.5s ease-out 0.4s both;
+        }
+
+        /* Reuse fadeUp and slideUp definitions */
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(24px) scale(0.97);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @media(max-width:600px) {
+            body {
+                padding: 1rem;
+            }
+
+            .fab-group {
+                flex-direction: column;
+                bottom: 1rem;
+                right: 1rem;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-header">
+        <div>
+            <div class="page-title">Visit Report</div>
+            <div class="page-subtitle">{{ state.patient_information.patient_name or 'Patient' }} — {{
+                state.patient_information.date_of_service or 'N/A' }}</div>
+        </div>
+        <div class="header-right">
+            <div class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">
+                <div class="knob" id="themeKnob">🌙</div>
+            </div>
+            <div class="version-selector">
+                <button class="version-btn" id="versionBtn" onclick="toggleVersionDropdown()">v{{ state.version }}
+                    ▾</button>
+                <div class="version-dropdown" id="versionDropdown">
+                    <div class="version-dropdown-title">Version History</div>
+                    {% for v in versions %}
+                    <div class="version-item{% if v.version == state.version %} active{% endif %}"
+                        data-version="{{ v.version }}" onclick="switchVersion(this.dataset.version)">
+                        <span class="vi-dot"></span> {{ v.label }}
+                    </div>
+                    {% endfor %}
+                    {% if not versions %}
+                    <div class="version-item active"><span class="vi-dot"></span> v{{ state.version }} \u2014 Current
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title"><span class="icon purple">👤</span> Patient Information</div>
+        <div class="info-grid">
+            <div class="info-item"><span class="info-label">Patient Name</span><span class="info-value">{{
+                    state.patient_information.patient_name or '—' }}</span></div>
+            <div class="info-item"><span class="info-label">DOB</span><span class="info-value">{{
+                    state.patient_information.dob or '—' }}</span></div>
+            <div class="info-item"><span class="info-label">Date of Service</span><span class="info-value">{{
+                    state.patient_information.date_of_service or '—' }}</span></div>
+            <div class="info-item"><span class="info-label">Physician</span><span class="info-value">{{
+                    state.patient_information.physician or '—' }}</span></div>
+            <div class="info-item"><span class="info-label">Facility</span><span class="info-value">{{
+                    state.patient_information.facility or '—' }}</span></div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title"><span class="icon teal">🩹</span> Wound Assessment Table</div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Attribute</th>{% for num in wound_nums %}<th>Wound #{{ num }}</th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody>{% for row in rows %}<tr>
+                        <td>{{ row.label }}</td>{% for val in row.vals %}<td>{{ val }}</td>{% endfor %}
+                    </tr>{% endfor %}</tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title"><span class="icon rose">📝</span> Detailed Visit Summaries</div>
+        {% for summary in wound_summaries %}
+        <div class="summary-card">
+            <strong>Wound #{{ summary.number }} — {{ summary.type }} — {{ summary.location }}</strong>
+            <p>{{ summary.summary | safe }}</p>
+        </div>
+        {% endfor %}
+        <div class="summary-card"><strong>Overall Comments</strong>
+            <p>{{ state.provider_comments or 'No comments provided.' }}</p>
+        </div>
+    </div>
+
+    <div class="footer">
+        Version {{ state.version }} &nbsp;·&nbsp; Last Updated: {{ state.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}
+    </div>
+
+    <!-- FABs -->
+    <div class="fab-group">
+        <button class="fab fab-download" onclick="downloadDocx()">⬇ Download DOCX</button>
+        <button class="fab fab-addendum" onclick="openModal()">+ Addendum</button>
+    </div>
+
+    <!-- Addendum Modal -->
+    <div class="modal-overlay" id="overlay">
+        <div class="modal">
+            <h3>Dictate Addendum</h3>
+            <p class="sub">Type or paste your addendum dictation below.</p>
+            <textarea id="addendumText" placeholder="e.g. Addendum wound 1 depth is now 0.8…"></textarea>
+            <div class="modal-actions">
+                <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+                <button class="submit-btn" onclick="submitAddendum()">Submit Addendum</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ─── Theme ───
+        function getTheme() { return localStorage.getItem('wc-theme') || 'dark'; }
+        function setTheme(t) {
+            document.documentElement.setAttribute('data-theme', t);
+            localStorage.setItem('wc-theme', t);
+            document.getElementById('themeKnob').textContent = t === 'dark' ? '🌙' : '☀️';
+        }
+        setTheme(getTheme());
+        document.getElementById('themeToggle').onclick = () => setTheme(getTheme() === 'dark' ? 'light' : 'dark');
+
+        function openModal() { document.getElementById('overlay').classList.add('show'); }
+        function closeModal() { document.getElementById('overlay').classList.remove('show'); }
+        document.getElementById('overlay').onclick = e => { if (e.target.id === 'overlay') closeModal(); };
+
+        async function submitAddendum() {
+            const text = document.getElementById('addendumText').value;
+            if (!text.trim()) return;
+            const appointmentId = '{{ state.appointment_id }}';
+            const res = await fetch('/addendum', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ appointment_id: appointmentId, transcript: text })
+            });
+            if (res.ok) location.reload();
+            else alert('Error submitting addendum');
+        }
+        function downloadDocx() {
+            window.location.href = `/download/{{ state.appointment_id }}/docx`;
+        }
+
+        // ─── Version Selector ───
+        function toggleVersionDropdown() {
+            document.getElementById('versionDropdown').classList.toggle('show');
+        }
+        function switchVersion(v) {
+            window.location.href = `/view/{{ state.appointment_id }}?version=${v}`;
+        }
+        // Close dropdown when clicking outside
+        document.addEventListener('click', e => {
+            const sel = document.querySelector('.version-selector');
+            if (sel && !sel.contains(e.target)) {
+                document.getElementById('versionDropdown').classList.remove('show');
+            }
+        });
+    </script>
+</body>
+
+</html>
