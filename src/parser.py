@@ -18,8 +18,8 @@ from .abbreviations import get_abbreviation_markdown
 class ClinicalParser:
     """Uses LLM to extract structured clinical intent from transcripts."""
     
-    def __init__(self, model_name: str = "gemini-1.5-flash"):
-        self.model_names = [model_name, "gemini-1.5-flash-latest", "gemini-1.5-pro", "gemini-pro"]
+    def __init__(self, model_name: str = "gemini-2.0-flash"):
+        self.model_names = [model_name, "gemini-flash-latest", "gemini-2.5-flash", "gemini-pro-latest"]
         self.current_model_idx = 0
         self._init_model()
 
