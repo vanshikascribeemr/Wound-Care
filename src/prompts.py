@@ -225,16 +225,16 @@ TRANSCRIPT:
 ---------------------------------------------------------------------
 
 OUTPUT JSON SCHEMA:
-{
-  "patient_info": {
+{{
+  "patient_info": {{
     "patient_name": "-",
     "dob": "-",
     "date_of_service": "-",
     "physician": "-",
     "facility": "-"
-  },
+  }},
   "wounds": [
-    {
+    {{
       "number": "1",
       "mist_therapy": "-",
       "location": "-",
@@ -259,10 +259,10 @@ OUTPUT JSON SCHEMA:
       "procedure": "-",
       "clinical_summary": "-",
       "treatment_plan": "-"
-    }
+    }}
   ],
   "comments": "-"
-}
+}}
 
 Return ONLY the JSON object.
 """
