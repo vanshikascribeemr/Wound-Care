@@ -18,7 +18,7 @@ from .abbreviations import get_abbreviation_markdown
 class ClinicalParser:
     """Uses LLM to extract structured clinical intent from transcripts."""
     
-    def __init__(self, model_name: str = "gemini-1.5-flash-latest"):
+    def __init__(self, model_name: str = "gemini-1.5-flash"):
         print(f"Initializing ClinicalParser with model: {model_name}")
         self.model = genai.GenerativeModel(model_name)
 

@@ -98,12 +98,21 @@ class EncounterManager:
 
     def save_state(self, state: EncounterState):
         state.updated_at = datetime.now()
-        local_path = self._get_path(state.appointment_id)
-        with open(local_path, "w", encoding="utf-8") as f:
+        
+        # 1. Save JSON locally (Always keep for state management)
+        json_path = self._get_path(state.appointment_id)
+        with open(json_path, "w", encoding="utf-8") as f:
             f.write(state.model_dump_json(indent=2))
         
-        # Sync to S3
-        self._upload_to_s3(local_path, f"{self.s3_prefix}/chart/{state.appointment_id}.json")
+        # 2. Generate DOCX report locally
+        docx_path = os.path.join(self.storage_dir, f"{state.appointment_id}.docx")
+        self.docx_gen.generate(state, docx_path)
+        
+        # 3. Upload DOCX to S3 (Into the 'chart' folder as requested)
+        s3_docx_key = f"{self.s3_prefix}/chart/{state.appointment_id}.docx"
+        self._upload_to_s3(docx_path, s3_docx_key)
+        
+        # Note: We keep JSON local for the app to function, but S3 now holds the professional Doc.
 
     def delete_appointment(self, appointment_id: str):
         """Delete an appointment and its associated files. Only allowed for 'Booked' state."""
