@@ -58,7 +58,9 @@ class NoteRenderer:
                 narrative.append(w.clinical_summary)
             
             if narrative:
-                summary_text = " ".join(narrative)
+                # Ensure each segment ends with a period if not present
+                segments = [s.strip().rstrip('.') + '.' for s in narrative if s and s != "-"]
+                summary_text = " ".join(segments)
             else:
                 # Fallback: Generate one from attributes ONLY if no narrative is present
                 attr_details = []

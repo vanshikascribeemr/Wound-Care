@@ -137,6 +137,16 @@ Example: "4 by 3 by 1 centimeters" → measurements = "4 x 3 x 1 cm"
 
 ---------------------------------------------------------------------
 
+---------------------------------------------------------------------
+NARRATIVE PUNCTUATION RULE (CRITICAL):
+For ALL narrative fields (clinical_summary, treatment_plan, comments):
+- Use proper periods (.) and commas (,) to separate clinical thoughts.
+- NEVER use 'x' as a separator or bullet between sentences.
+- Ensure sentences are grammatically correct and professional.
+- Only use 'x' in measurements (e.g., 4 x 3 x 0.5 cm) or for frequency count (e.g., TID x 7 days).
+
+---------------------------------------------------------------------
+
 ATTRIBUTE CAPTURE POLICY:
 Only populate fields explicitly dictated.
 If not mentioned → "-"
@@ -319,6 +329,13 @@ Example transformation BEFORE patch creation:
 
 Abbreviation expansion is a REQUIRED preprocessing step.
 Do NOT create patch operations until expansion is complete.
+
+---------------------------------------------------------------------
+NARRATIVE PUNCTUATION RULE (CRITICAL):
+For narrative updates (clinical_summary, treatment_plan, comments):
+- Use proper periods (.) and commas (,) at the end of thoughts.
+- PROHIBITED: Do NOT use 'x' as a sentence separator.
+- Match the existing punctuation style (standard English).
 
 ---------------------------------------------------------------------
 PATCHING SAFETY RULES

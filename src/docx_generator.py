@@ -102,7 +102,9 @@ class DocxGenerator:
                 narrative_parts.append(w.clinical_summary)
             
             if narrative_parts:
-                narrative = " ".join(narrative_parts)
+                # Ensure each segment ends with a period
+                segments = [s.strip().rstrip('.') + '.' for s in narrative_parts if s and s != "-"]
+                narrative = " ".join(segments)
             else:
                 narrative = "No detailed clinical summary recorded."
             
