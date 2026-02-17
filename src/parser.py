@@ -19,8 +19,28 @@ class ClinicalParser:
     """Uses LLM to extract structured clinical intent from transcripts."""
     
     def __init__(self, model_name: str = "gemini-1.5-flash"):
-        print(f"Initializing ClinicalParser with model: {model_name}")
-        self.model = genai.GenerativeModel(model_name)
+        self.model_names = [model_name, "gemini-1.5-flash-latest", "gemini-1.5-pro", "gemini-pro"]
+        self.current_model_idx = 0
+        self._init_model()
+
+    def _init_model(self):
+        name = self.model_names[self.current_model_idx]
+        print(f"Initializing ClinicalParser with model: {name}")
+        self.model = genai.GenerativeModel(name)
+
+    async def _generate_with_retry(self, prompt: str):
+        """Try multiple models if one fails."""
+        while self.current_model_idx < len(self.model_names):
+            try:
+                return await self.model.generate_content_async(prompt)
+            except Exception as e:
+                print(f"Model {self.model_names[self.current_model_idx]} failed: {e}")
+                self.current_model_idx += 1
+                if self.current_model_idx < len(self.model_names):
+                    self._init_model()
+                else:
+                    raise e
+        return None
 
     async def parse_transcript(self, transcript: str) -> Dict[str, Any]:
         """Initial parsing of a full transcript."""
@@ -29,7 +49,7 @@ class ClinicalParser:
             transcript=transcript, 
             abbreviations_list=abbrev_list
         )
-        response = await self.model.generate_content_async(prompt)
+        response = await self._generate_with_retry(prompt)
         try:
             # Clean response text if it has markdown blocks
             text = response.text.strip()
@@ -57,7 +77,7 @@ class ClinicalParser:
             addendum_transcript=addendum_transcript,
             abbreviations_list=abbrev_list
         )
-        response = await self.model.generate_content_async(prompt)
+        response = await self._generate_with_retry(prompt)
         try:
             text = response.text.strip()
             if text.startswith("```json"):
