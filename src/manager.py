@@ -220,6 +220,24 @@ class EncounterManager:
         # 4. Process to chart
         return await self.create_from_transcript(transcript, appointment_id)
 
+    async def process_audio_addendum_to_state(self, audio_path: str, appointment_id: str) -> EncounterState:
+        """Helper: Addendum Audio -> Transcript -> Patch with S3 archival."""
+        # 1. Upload addendum audio (unique timestamp to avoid overwriting)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self._upload_to_s3(audio_path, f"{self.s3_prefix}/audio/{appointment_id}_add_{ts}.wav")
+        
+        # 2. Transcribe
+        transcript = await self.transcriber.transcribe(audio_path)
+        
+        # 3. Store transcript in S3
+        transcript_path = os.path.join(self.storage_dir, f"transcript_{appointment_id}_add_{ts}.txt")
+        with open(transcript_path, "w", encoding="utf-8") as f:
+            f.write(transcript)
+        self._upload_to_s3(transcript_path, f"{self.s3_prefix}/transcript/{appointment_id}_add_{ts}.txt")
+        
+        # 4. Apply addendum
+        return await self.apply_addendum(appointment_id, transcript)
+
     def export_docx(self, encounter_id: str) -> str:
         """Export encounter state to DOCX file."""
         state = self.load_state(encounter_id)

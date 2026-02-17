@@ -96,11 +96,8 @@ async def upload_addendum(appointment_id: str, file: UploadFile = File(...)):
         with open(temp_path, "wb") as buffer:
             buffer.write(await file.read())
         
-        # Transcribe
-        transcript = await manager.transcriber.transcribe(temp_path)
-        
-        # Apply
-        encounter = await manager.apply_addendum(appointment_id, transcript)
+        # Process via manager (handles S3 archival)
+        encounter = await manager.process_audio_addendum_to_state(temp_path, appointment_id)
         
         os.remove(temp_path)
         return {
