@@ -54,6 +54,15 @@ class EncounterManager:
                 print(f"S3 Download Error: {e}")
         return False
 
+    def _delete_from_s3(self, s3_key: str):
+        """Delete a file from S3 if configured."""
+        if self.s3_client and self.s3_bucket:
+            try:
+                self.s3_client.delete_object(Bucket=self.s3_bucket, Key=s3_key)
+                print(f"Deleted s3://{self.s3_bucket}/{s3_key}")
+            except Exception as e:
+                print(f"S3 Delete Error: {e}")
+
     def create_appointment(self, req: PatientInformation) -> EncounterState:
         """Create a new booked appointment."""
         state = EncounterState(
@@ -125,6 +134,7 @@ class EncounterManager:
         if state.status != AppointmentStatus.BOOKED:
             raise ValueError("Cannot delete an appointment once a clinical record has been created.")
 
+        # 1. Delete Locally
         path = self._get_path(appointment_id)
         if os.path.exists(path):
             os.remove(path)
@@ -132,6 +142,10 @@ class EncounterManager:
         docx_path = os.path.join(self.storage_dir, f"{appointment_id}.docx")
         if os.path.exists(docx_path):
             os.remove(docx_path)
+        
+        # 2. Delete from S3
+        self._delete_from_s3(f"{self.s3_prefix}/state/{appointment_id}.json")
+        self._delete_from_s3(f"{self.s3_prefix}/chart/{appointment_id}.docx")
 
     def load_state(self, appointment_id: str) -> EncounterState:
         path = self._get_path(appointment_id)
