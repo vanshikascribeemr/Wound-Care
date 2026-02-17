@@ -12,18 +12,7 @@ def clean_narrative_text(text: str) -> str:
     
     res = text.strip()
     
-    # pattern: optional period + space + x + space followed by a sentence starter
-    sentence_starters = "Apply|Cleaned|Continue|Change|Heal|To|No|Education|Patient|Observed|Wound|Dressings|Initiate|Encourage"
-    res = re.sub(r'[\.\s]*\s+x\s+([A-Z]|' + sentence_starters + r')', r'. \1', res)
-    
-    # Handle lowercase joining: "word x word" -> "word. word"
-    # Ensure it's not a measurement like "4 x 5"
-    res = re.sub(r'([a-zA-Z]{3,})\s+x\s+([a-zA-Z]{3,})', r'\1. \2', res)
-    
-    # Handle trailing x
-    res = re.sub(r'\s+x\s*$', r'.', res)
-
-    # 2. Clinical Term Normalization (Post-parsing cleanup)
+    # 1. Clinical Term Normalization (Run BEFORE punctuation fix to catch things like "3 x Forced")
     norm_map = {
         "alkenate": "alginate",
         "calcium alkenate": "calcium alginate",
@@ -36,15 +25,32 @@ def clean_narrative_text(text: str) -> str:
         "boarder foam": "bordered foam",
         "mild honey": "Medihoney",
         "normal saline": "Normal Saline",
-        "rejuvenation": "elevation", # "Encourage rejuvenation when seated" -> "Encourage elevation..."
+        "rejuvenation": "elevation",
         "Education 3 x Forced": "Education reinforced",
         "Education 3 x reinforced": "Education reinforced",
         "Education reinforced": "Education was reinforced"
     }
     
     for old, new in norm_map.items():
-        # Case-insensitive replacement
         res = re.sub(re.escape(old), new, res, flags=re.IGNORECASE)
+
+    # 2. Fix unintentional " x " separator glitch
+    
+    # pattern: optional period + space + x + space followed by a sentence starter
+    sentence_starters = "Apply|Cleaned|Continue|Change|Heal|To|No|Education|Patient|Observed|Wound|Dressings|Initiate|Encourage"
+    # Added [a-z] to catching start of sentence if it was lowercase
+    res = re.sub(r'[\.\s]*\s+x\s+([A-Z]|' + sentence_starters + r')', r'. \1', res)
+    
+    # Handle lowercase joining: "word x word" -> "word. Word"
+    # Ensure it's not a measurement like "4 x 5"
+    # We use a lambda to capitalize the second word
+    def repl_func(match):
+        return f"{match.group(1)}. {match.group(2).capitalize()}"
+    
+    res = re.sub(r'([a-zA-Z]{2,})\s+x\s+([a-zA-Z]{2,})', repl_func, res)
+
+    # Handle trailing x
+    res = re.sub(r'\s+x\s*$', r'.', res)
 
     # 3. Final Punctuation Check
     # Ensure double periods don't happen
