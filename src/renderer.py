@@ -81,7 +81,7 @@ class NoteRenderer:
                 "type": w.type or "Unspecified Type",
                 "location": w.location or "Unspecified Location",
                 "summary": summary_text,
-                "treatment_plan": w.treatment_plan if w.treatment_plan and w.treatment_plan != "-" else None
+                "treatment_plan": None  # Already included in summary
             })
 
         # Final cleanup for top-level fields

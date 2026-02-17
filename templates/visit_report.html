@@ -668,6 +668,12 @@
         <div class="summary-card">
             <strong>Wound #{{ summary.number }} — {{ summary.type }} — {{ summary.location }}</strong>
             <p><strong>Clinical Summary:</strong> {{ summary.summary | safe }}</p>
+            {% if summary.treatment_plan %}
+            <p style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--border);">
+                <span class="info-label" style="display: block; margin-bottom: 0.25rem;">Treatment Plan:</span>
+                <span style="color: var(--teal); font-weight: 500;">{{ summary.treatment_plan }}</span>
+            </p>
+            {% endif %}
         </div>
         {% endfor %}
         <div class="summary-card"><strong>Overall Comments</strong>
