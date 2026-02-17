@@ -14,6 +14,7 @@ if api_key:
 
 from .prompts import INTENT_EXTRACTION_PROMPT, ADDENDUM_PATCH_PROMPT
 from .abbreviations import get_abbreviation_markdown
+from .utils import clean_narrative_text
 
 class ClinicalParser:
     """Uses LLM to extract structured clinical intent from transcripts."""
@@ -85,18 +86,10 @@ class ClinicalParser:
                 import re
                 res = re.sub(r'(\d+)\.\s+(\d+)', r'\1 x \2', res)
             
-            # 3. Narrative Cleanup (Fix unintended "x" separators)
+            # 3. Narrative Cleanup (Fix unintended "x" separators and common mis-hears)
             narrative_fields = ["clinical_summary", "treatment_plan", "comments"]
             if key in narrative_fields or key is None:
-                # Replace " x " with ". " if it's likely a sentence separator
-                # Avoid replacing "TID x 7 days" or "Medihoney x 3"
-                import re
-                # Pattern: space, x, space, followed by a capital letter or start of common word
-                res = re.sub(r'\s+x\s+([A-Z]|No|To|Continue|Apply|Change|Education)', r'. \1', res)
-                # Handle cases where multiple sentences were merged with x
-                res = re.sub(r'([a-z])\s+x\s+([a-z])', r'\1. \2', res) 
-                # Also handle trailing x at the end of a block
-                res = re.sub(r'\s+x\s*$', r'.', res)
+                res = clean_narrative_text(res)
             
             return res.strip()
         return data

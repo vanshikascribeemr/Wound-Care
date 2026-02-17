@@ -2,6 +2,7 @@ from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from .models import EncounterState
+from .utils import clean_narrative_text
 import os
 
 class DocxGenerator:
@@ -102,8 +103,8 @@ class DocxGenerator:
                 narrative_parts.append(w.clinical_summary)
             
             if narrative_parts:
-                # Ensure each segment ends with a period
-                segments = [s.strip().rstrip('.') + '.' for s in narrative_parts if s and s != "-"]
+                # Ensure each segment ends with a period and clean it
+                segments = [clean_narrative_text(s.strip().rstrip('.') + '.') for s in narrative_parts if s and s != "-"]
                 narrative = " ".join(segments)
             else:
                 narrative = "No detailed clinical summary recorded."
@@ -116,10 +117,10 @@ class DocxGenerator:
             p.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
         doc.add_heading('Provider Comments', level=2)
-        doc.add_paragraph(state.provider_comments or "No comments.")
+        doc.add_paragraph(clean_narrative_text(state.provider_comments) or "No comments.")
 
         doc.add_heading('Clinical Plan', level=2)
-        doc.add_paragraph(state.treatment_plan or "No plan.")
+        doc.add_paragraph(clean_narrative_text(state.treatment_plan) or "No plan.")
 
         # Footer
         footer = doc.sections[0].footer

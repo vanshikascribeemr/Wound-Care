@@ -2,6 +2,7 @@ import json
 from typing import Any, List, Dict, Optional
 from jinja2 import Environment, FileSystemLoader
 from .models import EncounterState, WoundDetails
+from .utils import clean_narrative_text
 
 class NoteRenderer:
     """Renders EncounterState into the standardized Wound Care format."""
@@ -58,8 +59,8 @@ class NoteRenderer:
                 narrative.append(w.clinical_summary)
             
             if narrative:
-                # Ensure each segment ends with a period if not present
-                segments = [s.strip().rstrip('.') + '.' for s in narrative if s and s != "-"]
+                # Ensure each segment ends with a period if not present and clean it
+                segments = [clean_narrative_text(s.strip().rstrip('.') + '.') for s in narrative if s and s != "-"]
                 summary_text = " ".join(segments)
             else:
                 # Fallback: Generate one from attributes ONLY if no narrative is present
@@ -82,6 +83,10 @@ class NoteRenderer:
                 "summary": summary_text,
                 "treatment_plan": w.treatment_plan if w.treatment_plan and w.treatment_plan != "-" else None
             })
+
+        # Final cleanup for top-level fields
+        state.provider_comments = clean_narrative_text(state.provider_comments)
+        state.treatment_plan = clean_narrative_text(state.treatment_plan)
 
         template = self.env.get_template("visit_report.html")
         return template.render(

@@ -190,6 +190,13 @@ maculated → Macerated
 arthyma → Erythema
 alkenate → Alginate
 comparison wrap → Compression wrap
+compilation therapy → Compression therapy
+dry quartz → Dry gauze
+protecting wood → Protecting boot
+rejuvenation → Elevation
+Education 3 x Forced → Education reinforced
+boarded foam → Bordered foam
+mild honey → Medihoney
 
 Do NOT guess unfamiliar words.
 
