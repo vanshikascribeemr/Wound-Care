@@ -127,6 +127,15 @@ Providers may dictate meaning instead of symbols.
 Never insert symbols like ↑ ↓ =
 
 ---------------------------------------------------------------------
+UNIT NORMALIZATION (CRITICAL):
+ALWAYS convert spoken units to their abbreviations in structured fields:
+"centimeter" or "centimeters" → "cm"
+"square centimeters" → "sq cm"
+"cubic centimeters" → "cm³"
+
+Example: "4 by 3 by 1 centimeters" → measurements = "4 x 3 x 1 cm"
+
+---------------------------------------------------------------------
 
 ATTRIBUTE CAPTURE POLICY:
 Only populate fields explicitly dictated.
@@ -201,10 +210,12 @@ IDENTIFY & MAP:
 2. Clinical Attributes mapping:
    - Map spoken findings ONLY to the correct schema field.
    - Do NOT redistribute information into other attributes.
-3. Narrative Capture:
-   - "clinical_summary": Must contain a physical description/assessment of the wound findings (tissues, drainage, etc.).
-   - "treatment_plan": MUST contain the dictated care plan (dressings, frequency, offloading, etc.) ONLY if explicitly linked to THIS specific wound number in the transcript. 
-   - If a treatment/plan is mentioned generically without a wound number, do NOT place it here; if unsure, leave as "-".
+3. Narrative Capture (CRITICAL):
+   - "clinical_summary": Must contain the NARRATIVE assessment and TREATMENT/PLAN (dressings, frequency, offloading, etc.). 
+   - This field is the MOST IMPORTANT for the clinical report summary. 
+   - Do NOT just list measurements; focus on what was done and what the plan is.
+   - If a plan is mentioned, it MUST be included here.
+   - "treatment_plan": Duplicate the care plan here for structured data capture.
    - Do NOT invent or assume any information. Only capture what is explicitly spoken.
 
 4. Provider Comments (CRITICAL — MUST CAPTURE):
@@ -261,6 +272,7 @@ OUTPUT JSON SCHEMA:
       "treatment_plan": "-"
     }}
   ],
+  "treatment_plan": "-",
   "comments": "-"
 }}
 
@@ -418,7 +430,7 @@ are unchanged.
 NARRATIVE UPDATE RULE
 ---------------------------------------------------------------------
 
-Update "clinical_summary" ONLY by appending or modifying dictated changes.
+Update "clinical_summary" or "treatment_plan" ONLY by appending or modifying dictated changes.
 Do NOT rewrite the entire summary unless explicitly replaced.
 
 ---------------------------------------------------------------------

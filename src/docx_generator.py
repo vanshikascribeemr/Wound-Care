@@ -94,14 +94,22 @@ class DocxGenerator:
             run = p.add_run(header)
             run.bold = True
             
-            # Narrative content
-            narrative = w.clinical_summary if w.clinical_summary and w.clinical_summary != "-" else "No detailed clinical summary recorded."
+            # Prioritize narrative content (Plan and Clinical Summary)
+            narrative_parts = []
+            if w.treatment_plan and w.treatment_plan != "-":
+                narrative_parts.append(w.treatment_plan)
+            if w.clinical_summary and w.clinical_summary != "-" and w.clinical_summary not in narrative_parts:
+                narrative_parts.append(w.clinical_summary)
+            
+            if narrative_parts:
+                narrative = " ".join(narrative_parts)
+            else:
+                narrative = "No detailed clinical summary recorded."
+            
             p.add_run(f"\nSummary: {narrative}")
             
-            if w.treatment_plan and w.treatment_plan != "-":
-                run = p.add_run(f"\nTreatment Plan: ")
-                run.bold = True
-                p.add_run(f"{w.treatment_plan}")
+            # Note: Individual treatment plan is now integrated into the summary above per user preference.
+            # But we keep this check for backward compatibility if needed, though narrative now covers it.
             
             p.alignment = WD_ALIGN_PARAGRAPH.LEFT
 

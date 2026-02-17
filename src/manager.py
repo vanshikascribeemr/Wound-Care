@@ -69,7 +69,7 @@ class EncounterManager:
         if self.s3_client and self.s3_bucket:
             try:
                 paginator = self.s3_client.get_paginator('list_objects_v2')
-                for page in paginator.paginate(Bucket=self.s3_bucket, Prefix=f"{self.s3_prefix}/chart/"):
+                for page in paginator.paginate(Bucket=self.s3_bucket, Prefix=f"{self.s3_prefix}/state/"):
                     for obj in page.get('Contents', []):
                         key = obj['Key']
                         if key.endswith(".json"):
@@ -108,11 +108,16 @@ class EncounterManager:
         docx_path = os.path.join(self.storage_dir, f"{state.appointment_id}.docx")
         self.docx_gen.generate(state, docx_path)
         
-        # 3. Upload DOCX to S3 (Into the 'chart' folder as requested)
+        # 3. Upload artifacts to S3
+        # DOCX goes to 'chart' folder (Professional output)
         s3_docx_key = f"{self.s3_prefix}/chart/{state.appointment_id}.docx"
         self._upload_to_s3(docx_path, s3_docx_key)
         
-        # Note: We keep JSON local for the app to function, but S3 now holds the professional Doc.
+        # JSON goes to 'state' folder (Internal backup/sync)
+        s3_json_key = f"{self.s3_prefix}/state/{state.appointment_id}.json"
+        self._upload_to_s3(json_path, s3_json_key)
+        
+        # Note: S3 now holds the professional Doc in 'chart' and the data in 'state'.
 
     def delete_appointment(self, appointment_id: str):
         """Delete an appointment and its associated files. Only allowed for 'Booked' state."""
@@ -131,9 +136,9 @@ class EncounterManager:
     def load_state(self, appointment_id: str) -> EncounterState:
         path = self._get_path(appointment_id)
         
-        # If not local, try S3
+        # If not local, try S3 (from the 'state' folder)
         if not os.path.exists(path):
-            s3_key = f"{self.s3_prefix}/chart/{appointment_id}.json"
+            s3_key = f"{self.s3_prefix}/state/{appointment_id}.json"
             if not self._download_from_s3(s3_key, path):
                 raise FileNotFoundError(f"Appointment {appointment_id} not found locally or in S3")
         

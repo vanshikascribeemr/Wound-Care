@@ -50,14 +50,20 @@ class NoteRenderer:
         # 2. Prepare Detailed Wound Summaries
         wound_summaries = []
         for w in state.wounds:
-            # Use the LLM-generated clinical_summary if it exists
-            if w.clinical_summary and w.clinical_summary != "-":
-                summary_text = w.clinical_summary
+            # Prioritize narrative content (Plan and Clinical Summary)
+            narrative = []
+            if w.treatment_plan and w.treatment_plan != "-":
+                narrative.append(w.treatment_plan)
+            if w.clinical_summary and w.clinical_summary != "-" and w.clinical_summary not in narrative:
+                narrative.append(w.clinical_summary)
+            
+            if narrative:
+                summary_text = " ".join(narrative)
             else:
-                # Fallback: Generate one from attributes if narrative is missing
+                # Fallback: Generate one from attributes ONLY if no narrative is present
                 attr_details = []
                 for attr_id, label in self.ATTRIBUTES:
-                    if attr_id in ["number", "type", "location", "clinical_summary"]: continue 
+                    if attr_id in ["number", "type", "location", "clinical_summary", "treatment_plan"]: continue 
                     val = getattr(w, attr_id, None)
                     if val is None:
                         val = w.attributes.get(attr_id)
@@ -65,7 +71,7 @@ class NoteRenderer:
                     if val and val != "-" and val != "":
                         attr_details.append(f"<strong>{label}:</strong> {val}")
                 
-                summary_text = "; ".join(attr_details) if attr_details else "-"
+                summary_text = "; ".join(attr_details) if attr_details else "No detailed clinical summary recorded."
             
             wound_summaries.append({
                 "number": w.number,

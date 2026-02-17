@@ -42,6 +42,32 @@ class ClinicalParser:
                     raise e
         return None
 
+    def _post_process_json(self, data: Any) -> Any:
+        """Deeply normalize units like 'centimeter' to 'cm' and clean separators."""
+        if isinstance(data, dict):
+            return {k: self._post_process_json(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self._post_process_json(i) for i in data]
+        elif isinstance(data, str):
+            # Normalization map
+            norm = {
+                "centimeters": "cm",
+                "centimeter": "cm",
+                "square centimeters": "sq cm",
+                "cubic centimeters": "cm³",
+                ".point": ".", # Fix common transcription glitch
+                ". ": " x ", # Common in measurements
+                ";": "." # Doctors often dictate "4,5" or "4;5" for "4.5"
+            }
+            res = data
+            for old, new in norm.items():
+                if old in res.lower():
+                    import re
+                    # Case-insensitive replacement
+                    res = re.sub(re.escape(old), new, res, flags=re.IGNORECASE)
+            return res
+        return data
+
     async def parse_transcript(self, transcript: str) -> Dict[str, Any]:
         """Initial parsing of a full transcript."""
         abbrev_list = get_abbreviation_markdown()
@@ -57,7 +83,9 @@ class ClinicalParser:
                 text = text.split("```json")[1].split("```")[0].strip()
             elif text.startswith("```"):
                 text = text.split("```")[1].split("```")[0].strip()
-            return json.loads(text)
+            
+            parsed = json.loads(text)
+            return self._post_process_json(parsed)
         except Exception as e:
             print(f"Error parsing LLM response: {e}")
             return {"error": "Failed to parse transcript"}
@@ -68,7 +96,8 @@ class ClinicalParser:
         minimized_state = {
             "patient_info": existing_state.get("patient_information", {}),
             "wounds": existing_state.get("wounds", []),
-            "comments": existing_state.get("provider_comments", "")
+            "comments": existing_state.get("provider_comments", ""),
+            "treatment_plan": existing_state.get("treatment_plan", "")
         }
         
         abbrev_list = get_abbreviation_markdown()
@@ -82,7 +111,8 @@ class ClinicalParser:
             text = response.text.strip()
             if text.startswith("```json"):
                 text = text.split("```json")[1].split("```")[0].strip()
-            return json.loads(text)
+            parsed = json.loads(text)
+            return self._post_process_json(parsed)
         except Exception as e:
             print(f"Error parsing patch response: {e}")
             return []
