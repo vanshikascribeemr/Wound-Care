@@ -227,13 +227,14 @@ IDENTIFY & MAP:
 2. Clinical Attributes mapping:
    - Map spoken findings ONLY to the correct schema field.
    - Do NOT redistribute information into other attributes.
-3. Narrative Capture (CRITICAL):
-   - "clinical_summary": Must contain the NARRATIVE assessment and TREATMENT/PLAN (dressings, frequency, offloading, etc.). 
-   - This field is the MOST IMPORTANT for the clinical report summary. 
-   - Do NOT just list measurements; focus on what was done and what the plan is.
-   - If a plan is mentioned, it MUST be included here.
-   - "treatment_plan": Duplicate the care plan here for structured data capture.
-   - Do NOT invent or assume any information. Only capture what is explicitly spoken.
+3. Narrative Capture (CRITICAL - DO NOT MISS):
+   - "clinical_summary": This is the primary narrative field. It MUST include:
+     a) The ASSESSMENT of the wound.
+     b) The full TREATMENT applied (cleaning, debridement, dressings).
+     c) The PLAN (frequency, offloading, education).
+   - If the provider dictates a treatment or plan, it MUST appear here.
+   - Do NOT split the plan away into other fields. Keep it combined in the summary for readability.
+   - "treatment_plan": Also copy the plan here for structured data, but "clinical_summary" is the master record.
 
 4. Provider Comments (CRITICAL — MUST CAPTURE):
    Capture verbatim text following trigger phrases:
