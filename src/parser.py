@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from .models import EncounterState, WoundDetails, PatientInformation
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -42,30 +42,50 @@ class ClinicalParser:
                     raise e
         return None
 
-    def _post_process_json(self, data: Any) -> Any:
+    def _post_process_json(self, data: Any, key: Optional[str] = None) -> Any:
         """Deeply normalize units like 'centimeter' to 'cm' and clean separators."""
         if isinstance(data, dict):
-            return {k: self._post_process_json(v) for k, v in data.items()}
+            return {k: self._post_process_json(v, k) for k, v in data.items()}
         elif isinstance(data, list):
-            return [self._post_process_json(i) for i in data]
+            return [self._post_process_json(i, key) for i in data]
         elif isinstance(data, str):
-            # Normalization map
-            norm = {
+            res = data
+            
+            # 1. Global Unit Normalization (Safe for all fields)
+            global_norm = {
                 "centimeters": "cm",
                 "centimeter": "cm",
                 "square centimeters": "sq cm",
                 "cubic centimeters": "cm³",
-                ".point": ".", # Fix common transcription glitch
-                ". ": " x ", # Common in measurements
-                ";": "." # Doctors often dictate "4,5" or "4;5" for "4.5"
+                " %": "%",
+                " .": ".",
             }
-            res = data
-            for old, new in norm.items():
+            
+            for old, new in global_norm.items():
                 if old in res.lower():
                     import re
-                    # Case-insensitive replacement
                     res = re.sub(re.escape(old), new, res, flags=re.IGNORECASE)
-            return res
+
+            # 2. Field-Specific Normalization (ONLY for measurements/structured fields)
+            measurement_fields = ["measurements", "tunnels", "max_depth", "undermining", "area_sq_cm", "volume_cu_cm"]
+            if key in measurement_fields:
+                struct_norm = {
+                    ".point": ".",
+                    " point ": ".",
+                    " by ": " x ",
+                    ";": ".",
+                    # Only replace period with x if it looks like a measurement (digit period space digit)
+                }
+                for old, new in struct_norm.items():
+                    if old in res.lower():
+                        import re
+                        res = re.sub(re.escape(old), new, res, flags=re.IGNORECASE)
+                
+                # Fix dimensions: "4. 3. 1" -> "4 x 3 x 1"
+                import re
+                res = re.sub(r'(\d+)\.\s+(\d+)', r'\1 x \2', res)
+            
+            return res.strip()
         return data
 
     async def parse_transcript(self, transcript: str) -> Dict[str, Any]:
