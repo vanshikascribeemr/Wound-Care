@@ -7,7 +7,19 @@ import uvicorn
 import os
 from typing import List, Optional
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="WoundCare Voice Dictation")
+
+# Enable CORS for production - allow all origins for now, can be restricted later
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 manager = EncounterManager()
 
 # Mount static files
@@ -17,6 +29,11 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def read_index():
     with open("static/index.html", "r", encoding="utf-8") as f:
         return f.read()
+
+@app.get("/health")
+async def health_check():
+    """Health check for AWS / Load Balancers."""
+    return {"status": "healthy", "version": "1.0.0"}
 
 @app.get("/appointments")
 async def get_appointments():

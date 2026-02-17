@@ -12,7 +12,9 @@ from .docx_generator import DocxGenerator
 class EncounterManager:
     """Manages the lifecycle of an encounter: storage, updates, and rendering."""
     
-    def __init__(self, storage_dir: str = "data"):
+    def __init__(self, storage_dir: str = None):
+        if storage_dir is None:
+            storage_dir = os.getenv("STORAGE_DIR", "data")
         self.storage_dir = storage_dir
         os.makedirs(storage_dir, exist_ok=True)
         self.parser = ClinicalParser()

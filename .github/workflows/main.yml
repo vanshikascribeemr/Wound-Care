@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "dev" ]
   pull_request:
     branches: [ "main" ]
 
@@ -48,9 +48,10 @@ jobs:
   # DEPLOYMENT PLACEHOLDER
   # To enable deployment, you need to set up secrets in your GitHub Repository
   # example for Render:
-  # deploy:
-  #   needs: build
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Deploy to Render
-  #       run: curl ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy Placeholder
+        run: echo "Ready for AWS Deployment"
