@@ -86,6 +86,8 @@ async def upload_audio(appointment_id: str, file: UploadFile = File(...)):
             "version": encounter.version
         }
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/upload-addendum")

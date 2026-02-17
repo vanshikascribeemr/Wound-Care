@@ -204,38 +204,34 @@ class EncounterManager:
         return state
 
     async def process_audio_to_state(self, audio_path: str, appointment_id: str) -> EncounterState:
-        """Helper: Audio -> Transcript -> State with S3 storage for artifacts."""
-        # 1. Upload raw audio
-        self._upload_to_s3(audio_path, f"{self.s3_prefix}/audio/{appointment_id}.wav")
-        
-        # 2. Transcribe
+        """Helper: Audio -> Transcript -> State with S3 storage (Conditional on Success)."""
+        # 1. Transcribe (Wait for success)
         transcript = await self.transcriber.transcribe(audio_path)
         
-        # 3. Store transcript as separate text file in S3
+        # 2. Only if transcription succeeded, upload Audio and Transcript Artifact to S3
+        self._upload_to_s3(audio_path, f"{self.s3_prefix}/audio/{appointment_id}.wav")
         transcript_path = os.path.join(self.storage_dir, f"transcript_{appointment_id}.txt")
         with open(transcript_path, "w", encoding="utf-8") as f:
             f.write(transcript)
         self._upload_to_s3(transcript_path, f"{self.s3_prefix}/transcript/{appointment_id}.txt")
         
-        # 4. Process to chart
+        # 3. Process to chart (State will be saved to local and S3 inside create_from_transcript)
         return await self.create_from_transcript(transcript, appointment_id)
 
     async def process_audio_addendum_to_state(self, audio_path: str, appointment_id: str) -> EncounterState:
-        """Helper: Addendum Audio -> Transcript -> Patch with S3 archival."""
-        # 1. Upload addendum audio (unique timestamp to avoid overwriting)
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self._upload_to_s3(audio_path, f"{self.s3_prefix}/audio/{appointment_id}_add_{ts}.wav")
-        
-        # 2. Transcribe
+        """Helper: Addendum Audio -> Transcript -> Patch with S3 archival (Conditional)."""
+        # 1. Transcribe
         transcript = await self.transcriber.transcribe(audio_path)
         
-        # 3. Store transcript in S3
+        # 2. Upload artifacts only after success
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self._upload_to_s3(audio_path, f"{self.s3_prefix}/audio/{appointment_id}_add_{ts}.wav")
         transcript_path = os.path.join(self.storage_dir, f"transcript_{appointment_id}_add_{ts}.txt")
         with open(transcript_path, "w", encoding="utf-8") as f:
             f.write(transcript)
         self._upload_to_s3(transcript_path, f"{self.s3_prefix}/transcript/{appointment_id}_add_{ts}.txt")
         
-        # 4. Apply addendum
+        # 3. Apply addendum
         return await self.apply_addendum(appointment_id, transcript)
 
     def export_docx(self, encounter_id: str) -> str:
