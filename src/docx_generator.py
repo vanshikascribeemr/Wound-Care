@@ -95,12 +95,14 @@ class DocxGenerator:
             run.bold = True
             
             # Narrative content
-            # If clinical_summary exists and is not just "-", use it.
-            narrative = w.clinical_summary if w.clinical_summary and w.clinical_summary != "-" else w.procedure
-            if not narrative or narrative == "-":
-                narrative = "No detailed clinical summary recorded."
+            narrative = w.clinical_summary if w.clinical_summary and w.clinical_summary != "-" else "No detailed clinical summary recorded."
+            p.add_run(f"\nSummary: {narrative}")
             
-            p.add_run(f"\n{narrative}")
+            if w.treatment_plan and w.treatment_plan != "-":
+                run = p.add_run(f"\nTreatment Plan: ")
+                run.bold = True
+                p.add_run(f"{w.treatment_plan}")
+            
             p.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
         doc.add_heading('Provider Comments', level=2)

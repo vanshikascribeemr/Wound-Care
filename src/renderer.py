@@ -71,7 +71,8 @@ class NoteRenderer:
                 "number": w.number,
                 "type": w.type or "Unspecified Type",
                 "location": w.location or "Unspecified Location",
-                "summary": summary_text
+                "summary": summary_text,
+                "treatment_plan": w.treatment_plan if w.treatment_plan and w.treatment_plan != "-" else None
             })
 
         template = self.env.get_template("visit_report.html")

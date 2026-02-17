@@ -100,7 +100,7 @@ No other calculations are allowed.
 
 ---------------------------------------------------------------------
 
-TREATMENT vs PROCEDURE DISTINCTION (COMMON ERROR):
+TREATMENT or PLAN vs PROCEDURE DISTINCTION (COMMON ERROR):
 Only map to "procedure" if provider explicitly says:
 "Debridement performed"
 "Sharp debridement"
@@ -186,7 +186,7 @@ without matching measurements.
 
 CONSISTENCY VALIDATION (FINAL CHECK BEFORE OUTPUT):
 If conflicting locations are mentioned → keep the clearly stated final one.
-If treatment described without wound number → associate ONLY if clearly linked.
+If treatment or plan described without wound number → associate ONLY if clearly linked.
 If unsure → "-".
 
 ---------------------------------------------------------------------
@@ -201,14 +201,11 @@ IDENTIFY & MAP:
 2. Clinical Attributes mapping:
    - Map spoken findings ONLY to the correct schema field.
    - Do NOT redistribute information into other attributes.
-3. Narrative Capture (clinical_summary):
-   Must contain dictated treatment plan including:
-   - Dressings
-   - Frequency
-   - Offloading
-   - Who performs care
-   - Clinical notes
-   Do NOT invent anything not spoken.
+3. Narrative Capture:
+   - "clinical_summary": Must contain a physical description/assessment of the wound findings (tissues, drainage, etc.).
+   - "treatment_plan": MUST contain the dictated care plan (dressings, frequency, offloading, etc.) ONLY if explicitly linked to THIS specific wound number in the transcript. 
+   - If a treatment/plan is mentioned generically without a wound number, do NOT place it here; if unsure, leave as "-".
+   - Do NOT invent or assume any information. Only capture what is explicitly spoken.
 
 4. Provider Comments (CRITICAL — MUST CAPTURE):
    Capture verbatim text following trigger phrases:
@@ -260,7 +257,8 @@ OUTPUT JSON SCHEMA:
       "granulation": "-",
       "tissue_exposed": "-",
       "procedure": "-",
-      "clinical_summary": "-"
+      "clinical_summary": "-",
+      "treatment_plan": "-"
     }
   ],
   "comments": "-"

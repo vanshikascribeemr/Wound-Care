@@ -50,6 +50,7 @@ class WoundDetails(BaseModel):
     tissue_exposed: Optional[str] = None
     procedure: Optional[str] = None
     clinical_summary: Optional[str] = None
+    treatment_plan: Optional[str] = None
     # Add other attributes from the table if needed
     attributes: Dict[str, Any] = Field(default_factory=dict)
 
