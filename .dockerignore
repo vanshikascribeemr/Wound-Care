@@ -12,5 +12,5 @@ data/
 .vscode/
 .agent/
 *.docx
-*.txt
+transcript_*.txt
 *.wav
