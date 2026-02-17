@@ -153,7 +153,7 @@ class EncounterManager:
             state.wounds.append(WoundDetails(**w))
             
         state.provider_comments = parsed_data.get("comments", "")
-        state.treatment_plan = parsed_data.get("plan", "")
+        state.treatment_plan = parsed_data.get("treatment_plan", "")
         state.status = AppointmentStatus.RECORDING_SAVED
         
         # Log history with state snapshot
