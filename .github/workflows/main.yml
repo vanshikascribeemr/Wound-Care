@@ -26,7 +26,7 @@ jobs:
       run: |
         # Run tests if they exist, otherwise just check app startup
         if [ -d "tests" ]; then
-          pytest
+          python -m pytest
         else
           python -c "import app; print('App import successful')"
         fi
