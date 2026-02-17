@@ -8,6 +8,8 @@ from .parser import ClinicalParser
 from .renderer import NoteRenderer
 from .transcriber import Transcriber
 from .docx_generator import DocxGenerator
+import boto3
+from botocore.exceptions import ClientError
 
 class EncounterManager:
     """Manages the lifecycle of an encounter: storage, updates, and rendering."""
@@ -17,6 +19,12 @@ class EncounterManager:
             storage_dir = os.getenv("STORAGE_DIR", "data")
         self.storage_dir = storage_dir
         os.makedirs(storage_dir, exist_ok=True)
+        
+        # S3 Configuration
+        self.s3_bucket = os.getenv("S3_BUCKET_NAME")
+        self.s3_client = boto3.client('s3') if self.s3_bucket else None
+        self.s3_prefix = "woundcare" # folder(woundcare)
+        
         self.parser = ClinicalParser()
         self.renderer = NoteRenderer()
         self.transcriber = Transcriber()
@@ -24,6 +32,27 @@ class EncounterManager:
 
     def _get_path(self, appointment_id: str) -> str:
         return os.path.join(self.storage_dir, f"{appointment_id}.json")
+
+    def _upload_to_s3(self, local_path: str, s3_key: str):
+        """Upload a file to S3 if configured."""
+        if self.s3_client and self.s3_bucket:
+            try:
+                self.s3_client.upload_file(local_path, self.s3_bucket, s3_key)
+                print(f"Uploaded {local_path} to s3://{self.s3_bucket}/{s3_key}")
+            except Exception as e:
+                print(f"S3 Upload Error: {e}")
+
+    def _download_from_s3(self, s3_key: str, local_path: str) -> bool:
+        """Download a file from S3 if it exists."""
+        if self.s3_client and self.s3_bucket:
+            try:
+                self.s3_client.download_file(self.s3_bucket, s3_key, local_path)
+                return True
+            except ClientError as e:
+                if e.response['Error']['Code'] == "404":
+                    return False
+                print(f"S3 Download Error: {e}")
+        return False
 
     def create_appointment(self, req: PatientInformation) -> EncounterState:
         """Create a new booked appointment."""
@@ -36,6 +65,22 @@ class EncounterManager:
 
     def list_appointments(self) -> List[EncounterState]:
         """List all appointments in the system."""
+        # 1. Sync list from S3 if available
+        if self.s3_client and self.s3_bucket:
+            try:
+                paginator = self.s3_client.get_paginator('list_objects_v2')
+                for page in paginator.paginate(Bucket=self.s3_bucket, Prefix=f"{self.s3_prefix}/chart/"):
+                    for obj in page.get('Contents', []):
+                        key = obj['Key']
+                        if key.endswith(".json"):
+                            appt_id = key.split('/')[-1].replace(".json", "")
+                            local_path = self._get_path(appt_id)
+                            if not os.path.exists(local_path):
+                                self._download_from_s3(key, local_path)
+            except Exception as e:
+                print(f"Error syncing list from S3: {e}")
+
+        # 2. Scrape local data folder
         appointments = []
         for filename in os.listdir(self.storage_dir):
             if filename.endswith(".json"):
@@ -53,8 +98,12 @@ class EncounterManager:
 
     def save_state(self, state: EncounterState):
         state.updated_at = datetime.now()
-        with open(self._get_path(state.appointment_id), "w", encoding="utf-8") as f:
+        local_path = self._get_path(state.appointment_id)
+        with open(local_path, "w", encoding="utf-8") as f:
             f.write(state.model_dump_json(indent=2))
+        
+        # Sync to S3
+        self._upload_to_s3(local_path, f"{self.s3_prefix}/chart/{state.appointment_id}.json")
 
     def delete_appointment(self, appointment_id: str):
         """Delete an appointment and its associated files. Only allowed for 'Booked' state."""
@@ -72,8 +121,13 @@ class EncounterManager:
 
     def load_state(self, appointment_id: str) -> EncounterState:
         path = self._get_path(appointment_id)
+        
+        # If not local, try S3
         if not os.path.exists(path):
-            raise FileNotFoundError(f"Appointment {appointment_id} not found")
+            s3_key = f"{self.s3_prefix}/chart/{appointment_id}.json"
+            if not self._download_from_s3(s3_key, path):
+                raise FileNotFoundError(f"Appointment {appointment_id} not found locally or in S3")
+        
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
             return EncounterState.model_validate(data)
@@ -150,8 +204,20 @@ class EncounterManager:
         return state
 
     async def process_audio_to_state(self, audio_path: str, appointment_id: str) -> EncounterState:
-        """Helper: Audio -> Transcript -> State."""
+        """Helper: Audio -> Transcript -> State with S3 storage for artifacts."""
+        # 1. Upload raw audio
+        self._upload_to_s3(audio_path, f"{self.s3_prefix}/audio/{appointment_id}.wav")
+        
+        # 2. Transcribe
         transcript = await self.transcriber.transcribe(audio_path)
+        
+        # 3. Store transcript as separate text file in S3
+        transcript_path = os.path.join(self.storage_dir, f"transcript_{appointment_id}.txt")
+        with open(transcript_path, "w", encoding="utf-8") as f:
+            f.write(transcript)
+        self._upload_to_s3(transcript_path, f"{self.s3_prefix}/transcript/{appointment_id}.txt")
+        
+        # 4. Process to chart
         return await self.create_from_transcript(transcript, appointment_id)
 
     def export_docx(self, encounter_id: str) -> str:

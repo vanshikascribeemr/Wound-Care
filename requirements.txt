@@ -12,3 +12,4 @@ httpx
 python-docx
 pydub
 python-multipart
+boto3

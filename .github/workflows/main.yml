@@ -27,6 +27,7 @@ jobs:
       env:
         GOOGLE_API_KEY: ${{ secrets.GOOGLEAPIKEY }}
         OPENAI_API_KEY: ${{ secrets.OPENAIKEY }}
+        S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
       run: |
         # Run tests if they exist, otherwise just check app startup
         if [ -d "tests" ]; then
