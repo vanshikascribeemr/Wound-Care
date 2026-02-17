@@ -24,8 +24,8 @@ jobs:
         
     - name: Run Tests
       env:
-        GOOGLE_API_KEY: "dummy-key"
-        OPENAI_API_KEY: "dummy-key"
+        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       run: |
         # Run tests if they exist, otherwise just check app startup
         if [ -d "tests" ]; then
