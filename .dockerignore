@@ -1,7 +1,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
-.env
 .venv
 env/
 venv/
@@ -11,6 +10,32 @@ data/
 .github/
 .vscode/
 .agent/
+.agents/
+.gemini/
 *.docx
 transcript_*.txt
 *.wav
+*.mp3
+*.m4a
+*.ogg
+
+# Secrets — NEVER bundle
+.env
+.env.*
+
+# Tests and debug scripts
+tests/
+.pytest_cache/
+debug_*.py
+test_*.py
+validate_imports.py
+
+# Infrastructure (not needed at runtime)
+infra/
+*.md
+
+# Lambda layer (separate artifact)
+lambda_layer/
+scriberyte_integration_package/
+scriberyte_integration_package.zip
+sample-audios/

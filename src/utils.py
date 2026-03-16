@@ -1,4 +1,110 @@
 import re
+import os
+
+# ─────────────────────────────────────────────────────────────
+# Scriberyte Filename Convention
+# ─────────────────────────────────────────────────────────────
+# All files follow:
+#   {timestamp}-{visitID}-{providerUUID}-{chart|addendum}-{version}.ext
+#
+# Examples:
+#   20260218143000-550e8400-e29b-41d4-a716-446655440000-660e8400-f30c-52e5-b827-557766551111-chart-1.mp3
+#   20260218143000-550e8400-e29b-41d4-a716-446655440000-660e8400-f30c-52e5-b827-557766551111-addendum-1.mp3
+#
+# Output files share the same base name, only extension differs:
+#   ...chart-1.html   (chart)
+#   ...chart-1.json   (clinical data)
+#   ...chart-1.txt    (transcript)
+# ─────────────────────────────────────────────────────────────
+
+UUID_PATTERN = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+
+
+def parse_audio_filename(filename: str) -> dict:
+    """
+    Parse a Scriberyte audio filename into its components.
+
+    Format: {timestamp}-{visitID}-{providerUUID}-{chart|addendum}-{version}.ext
+
+    Returns dict with:
+        base_name       : full name without extension (e.g. "20260218-VID-UUID-chart-1")
+        timestamp       : timestamp portion
+        visit_id        : visit ID (UUID)
+        provider_uuid   : provider UUID
+        file_type       : "chart" or "addendum"
+        version         : version string (e.g. "1")
+        appointment_id  : timestamp-visitID-providerUUID (unique per visit, used as state key)
+        is_addendum     : bool
+        extension       : original file extension (e.g. ".mp3")
+    """
+    name = os.path.splitext(filename)[0]
+    ext = os.path.splitext(filename)[1]
+
+    # 1. Detect type marker
+    is_addendum = bool(re.search(r'(-addendum-|_add)', name, re.IGNORECASE))
+
+    if '-chart-' in name.lower():
+        marker = '-chart-'
+        file_type = 'chart'
+    elif '-addendum-' in name.lower():
+        marker = '-addendum-'
+        file_type = 'addendum'
+    elif '_add' in name.lower():
+        marker = '_add'
+        file_type = 'addendum'
+    else:
+        marker = None
+        file_type = 'chart'
+
+    # 2. Split into appointment_id (base_id) and version
+    if marker and marker in ['-chart-', '-addendum-']:
+        parts = re.split(marker, name, flags=re.IGNORECASE, maxsplit=1)
+        base_id = parts[0]
+        version = parts[1] if len(parts) > 1 else '1'
+    elif marker == '_add':
+        parts = re.split(r'_add', name, flags=re.IGNORECASE, maxsplit=1)
+        base_id = parts[0].strip('-_ ')
+        version = parts[1].strip('-_ ') if len(parts) > 1 and parts[1].strip('-_ ') else '1'
+    else:
+        base_id = name
+        version = '1'
+
+    # 3. Extract UUIDs from base_id
+    #    First UUID = visitID, Second UUID = providerUUID
+    uuids = re.findall(UUID_PATTERN, base_id, re.IGNORECASE)
+
+    visit_id = uuids[0] if len(uuids) >= 1 else base_id
+    provider_uuid = uuids[1] if len(uuids) >= 2 else None
+
+    # 4. Extract timestamp (everything before the first UUID)
+    timestamp = ''
+    if uuids:
+        first_uuid_pos = base_id.lower().index(uuids[0].lower())
+        timestamp = base_id[:first_uuid_pos].rstrip('-')
+
+    return {
+        'base_name': name,
+        'timestamp': timestamp,
+        'visit_id': visit_id,
+        'provider_uuid': provider_uuid,
+        'file_type': file_type,
+        'version': version,
+        'appointment_id': base_id,  # timestamp-visitID-providerUUID
+        'is_addendum': is_addendum,
+        'extension': ext,
+    }
+
+
+def get_output_basename(original_audio_filename: str) -> str:
+    """
+    Get the base name for output files from the original audio filename.
+    Simply strips the extension — all outputs use the same base name.
+
+    Input:  "20260218-VID-UUID-chart-1.mp3"
+    Output: "20260218-VID-UUID-chart-1"
+    """
+    return os.path.splitext(original_audio_filename)[0]
+
 
 def clean_narrative_text(text: str) -> str:
     """

@@ -1,0 +1,106 @@
+{
+    "format": {
+        "type": "json_schema",
+        "name": "wound_care_visit_schema",
+        "strict": true,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "Patient Information": {
+                    "type": "object",
+                    "properties": {
+                        "Patient Name": {
+                            "type": "string"
+                        },
+                        "DOB": {
+                            "type": "string"
+                        },
+                        "Date of Service": {
+                            "type": "string"
+                        },
+                        "Physician": {
+                            "type": "string"
+                        },
+                        "Facility": {
+                            "type": "string"
+                        },
+                        "Transcriptionist": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "Patient Name",
+                        "DOB",
+                        "Date of Service",
+                        "Physician",
+                        "Facility",
+                        "Transcriptionist"
+                    ],
+                    "additionalProperties": false
+                },
+                "Wound Assessment Table": {
+                    "type": "object",
+                    "properties": {
+                        "headers": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "minItems": 2
+                        },
+                        "rows": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "minItems": 2
+                            },
+                            "minItems": 21
+                        }
+                    },
+                    "required": [
+                        "headers",
+                        "rows"
+                    ],
+                    "additionalProperties": false
+                },
+                "Detailed Visit Summaries": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "header": {
+                                "type": "string"
+                            },
+                            "narrative": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "header",
+                            "narrative"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "minItems": 0
+                },
+                "Provider Comment": {
+                    "type": "string"
+                },
+                "EM Justification": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Patient Information",
+                "Wound Assessment Table",
+                "Detailed Visit Summaries",
+                "Provider Comment",
+                "EM Justification"
+            ],
+            "additionalProperties": false
+        }
+    }
+}

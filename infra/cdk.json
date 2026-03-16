@@ -1,0 +1,8 @@
+{
+    "app": "python app.py",
+    "context": {
+        "region": "us-east-1",
+        "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
+        "@aws-cdk/core:stackRelativeExports": true
+    }
+}

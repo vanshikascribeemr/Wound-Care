@@ -1,17 +1,33 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
-from fastapi.responses import HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-from src.models import TranscriptProcessRequest, AddendumRequest, PatientInformation, AppointmentStatus
+"""
+WoundCare AI - Backend API Server (app.py)
+-------------------------------------------
+Entry point for the FastAPI backend. Exposes REST API endpoints consumed by
+Scriberyte and any other external systems. There is NO UI served from here —
+this is a pure backend service.
+
+Key Endpoints:
+  POST /appointments/book       - Pre-register a patient appointment (from Scriberyte)
+  POST /process-s3-audio        - Manually trigger processing of an audio file in S3
+  POST /process-s3-addendum     - Manually trigger addendum processing for an audio file in S3
+  POST /dictate                 - Process a raw transcript directly (no audio)
+  POST /addendum                - Apply a text addendum to an existing encounter
+  GET  /appointments            - List all appointments
+  GET  /health                  - Health check for AWS / load balancers
+
+Primary Pipeline (automated):
+  Audio uploaded to S3 → S3Watcher detects → Transcribe → Fetch patient info
+  from Scriberyte → LLM parse → Generate HTML chart → Upload to S3
+"""
+from fastapi import FastAPI, HTTPException
+from src.models import TranscriptProcessRequest, AddendumRequest, PatientInformation, S3ProcessRequest
 from src.manager import EncounterManager
 import uvicorn
-import os
-from typing import List, Optional
 
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="WoundCare Voice Dictation")
+app = FastAPI(title="WoundCare AI Pipeline API")
 
-# Enable CORS for production - allow all origins for now, can be restricted later
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,27 +38,29 @@ app.add_middleware(
 
 manager = EncounterManager()
 
-# Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-@app.get("/", response_class=HTMLResponse)
-async def read_index():
-    with open("static/index.html", "r", encoding="utf-8") as f:
-        return f.read()
+# ─────────────────────────────────────────────
+# Health
+# ─────────────────────────────────────────────
 
 @app.get("/health")
 async def health_check():
     """Health check for AWS / Load Balancers."""
-    return {"status": "healthy", "version": "1.0.0"}
+    return {"status": "healthy", "version": "2.0.0"}
+
+
+# ─────────────────────────────────────────────
+# Appointments
+# ─────────────────────────────────────────────
 
 @app.get("/appointments")
 async def get_appointments():
     """List all appointments."""
     return manager.list_appointments()
 
+
 @app.post("/appointments/book")
 async def book_appointment(req: PatientInformation):
-    """Create a new appointment."""
+    """Create a new appointment (called by Scriberyte or manually)."""
     try:
         appointment = manager.create_appointment(req)
         return {
@@ -52,124 +70,6 @@ async def book_appointment(req: PatientInformation):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/dictate")
-async def process_dictation(req: TranscriptProcessRequest):
-    """Update an appointment from dictation."""
-    try:
-        encounter = await manager.create_from_transcript(req.transcript, req.appointment_id)
-        return {
-            "status": "success",
-            "appointment_id": encounter.appointment_id,
-            "version": encounter.version
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-@app.post("/upload-audio")
-async def upload_audio(appointment_id: str, file: UploadFile = File(...)):
-    """Voice -> Transcript -> Structured Entry for a specific appointment."""
-    try:
-        # Save temp file
-        temp_path = f"data/temp_{file.filename}"
-        with open(temp_path, "wb") as buffer:
-            buffer.write(await file.read())
-        
-        # Process
-        encounter = await manager.process_audio_to_state(temp_path, appointment_id)
-        
-        # Cleanup
-        os.remove(temp_path)
-        
-        return {
-            "status": "success",
-            "appointment_id": encounter.appointment_id,
-            "version": encounter.version
-        }
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/upload-addendum")
-async def upload_addendum(appointment_id: str, file: UploadFile = File(...)):
-    """Addendum Voice -> Transcript -> Patch Entry."""
-    try:
-        temp_path = f"data/temp_add_{file.filename}"
-        with open(temp_path, "wb") as buffer:
-            buffer.write(await file.read())
-        
-        # Process via manager (handles S3 archival)
-        encounter = await manager.process_audio_addendum_to_state(temp_path, appointment_id)
-        
-        os.remove(temp_path)
-        return {
-            "status": "success",
-            "appointment_id": encounter.appointment_id,
-            "version": encounter.version
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/addendum")
-async def addendum(req: AddendumRequest):
-    """Update an existing encounter with new information."""
-    try:
-        encounter = await manager.apply_addendum(req.appointment_id, req.transcript)
-        return {
-            "status": "success",
-            "appointment_id": encounter.appointment_id,
-            "version": encounter.version
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/view/{appointment_id}", response_class=HTMLResponse)
-async def view_report(appointment_id: str, version: Optional[int] = None):
-    """View the rendered clinical report, optionally at a specific version."""
-    try:
-        html = manager.render_encounter(appointment_id, version=version)
-        return html
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/download/{appointment_id}/docx")
-async def download_docx(appointment_id: str):
-    """Download the final note as a DOCX file."""
-    try:
-        path = manager.export_docx(appointment_id)
-        state = manager.load_state(appointment_id)
-        filename = f"WoundCare_{state.patient_information.patient_name or 'Note'}_{appointment_id[:8]}.docx"
-        return FileResponse(path, filename=filename, media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/download/{appointment_id}/transcript")
-async def download_transcript(appointment_id: str):
-    """Download the full session transcript as a text file."""
-    try:
-        content = manager.get_full_transcript(appointment_id)
-        state = manager.load_state(appointment_id)
-        filename = f"Transcript_{state.patient_information.patient_name or 'Note'}_{appointment_id[:8]}.txt"
-        
-        # Save to temp file
-        temp_path = f"data/transcript_{appointment_id}.txt"
-        with open(temp_path, "w", encoding="utf-8") as f:
-            f.write(content)
-            
-        return FileResponse(temp_path, filename=filename, media_type='text/plain')
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/transcript/{appointment_id}")
-async def get_transcript_text(appointment_id: str):
-    """Get the full session transcript for preview."""
-    try:
-        content = manager.get_full_transcript(appointment_id)
-        return {"transcript": content}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/appointments/{appointment_id}")
 async def delete_appointment(appointment_id: str):
@@ -180,23 +80,92 @@ async def delete_appointment(appointment_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-from pydantic import BaseModel as PydanticBaseModel
 
-class RescheduleRequest(PydanticBaseModel):
-    date_of_service: str
+# ─────────────────────────────────────────────
+# S3 Audio Processing (Primary Pipeline)
+# ─────────────────────────────────────────────
 
-@app.patch("/appointments/{appointment_id}/reschedule")
-async def reschedule_appointment(appointment_id: str, req: RescheduleRequest):
-    """Reschedule an appointment to a new date."""
+@app.post("/process-s3-audio")
+async def process_s3_audio(req: S3ProcessRequest):
+    """Trigger processing for an audio file already in S3 (alternative to watcher)."""
     try:
-        state = manager.load_state(appointment_id)
-        state.patient_information.date_of_service = req.date_of_service
-        manager.save_state(state)
-        return {"status": "success", "new_date": req.date_of_service}
+        encounter = await manager.process_s3_audio_to_state(
+            req.s3_key, 
+            req.appointment_id, 
+            provider_id=req.provider_id
+        )
+        return {
+            "status": "success",
+            "appointment_id": encounter.appointment_id,
+            "version": encounter.version
+        }
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Appointment not found")
+        raise HTTPException(status_code=404, detail="S3 file not found")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/process-s3-addendum")
+async def process_s3_addendum(req: S3ProcessRequest):
+    """Trigger addendum processing for an audio file already in S3."""
+    try:
+        encounter = await manager.process_s3_addendum_to_state(
+            req.s3_key, 
+            req.appointment_id, 
+            provider_id=req.provider_id
+        )
+        return {
+            "status": "success",
+            "appointment_id": encounter.appointment_id,
+            "version": encounter.version
+        }
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="S3 file not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─────────────────────────────────────────────
+# Text-Based Processing (Advanced / Manual)
+# ─────────────────────────────────────────────
+
+@app.post("/dictate")
+async def process_dictation(req: TranscriptProcessRequest):
+    """Process a raw transcript directly (no audio needed)."""
+    try:
+        encounter = await manager.create_from_transcript(
+            req.transcript, 
+            req.appointment_id, 
+            provider_id=req.provider_id
+        )
+        return {
+            "status": "success",
+            "appointment_id": encounter.appointment_id,
+            "version": encounter.version
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/addendum")
+async def addendum(req: AddendumRequest):
+    """Apply a text addendum to an existing encounter."""
+    try:
+        encounter = await manager.apply_addendum(
+            req.appointment_id, 
+            req.transcript, 
+            provider_id=req.provider_id
+        )
+        return {
+            "status": "success",
+            "appointment_id": encounter.appointment_id,
+            "version": encounter.version
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

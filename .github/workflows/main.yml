@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: WoundCare AI — CI/CD Pipeline
 
 on:
   push:
@@ -6,55 +6,131 @@ on:
   pull_request:
     branches: [ "main" ]
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    environment: google-API-key
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.11"
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        
-    - name: Run Tests
-      env:
-        GOOGLE_API_KEY: ${{ secrets.GOOGLEAPIKEY }}
-        OPENAI_API_KEY: ${{ secrets.OPENAIKEY }}
-        S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      run: |
-        # Run tests if they exist, otherwise just check app startup
-        if [ -d "tests" ]; then
-          python -m pytest
-        else
-          python -c "import app; print('App import successful')"
-        fi
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: woundcare-ai
+  ECS_CLUSTER: woundcare-cluster
+  API_SERVICE: woundcare-api
+  WATCHER_SERVICE: woundcare-watcher
 
-  build:
+jobs:
+  # ─────────────────────────────────────────────
+  # JOB 1: Run Tests
+  # ─────────────────────────────────────────────
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Tests
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLEAPIKEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAIKEY }}
+          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          if [ -d "tests" ]; then
+            python -m pytest tests/ -v
+          else
+            python -c "from app import app; print('App import OK')"
+          fi
+
+  # ─────────────────────────────────────────────
+  # JOB 2: Build & Push Docker Image to ECR
+  # ─────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push to ECR
     needs: test
     runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Build Docker Image
-      run: |
-        docker build -t woundcare-ai:latest .
-
-  # DEPLOYMENT PLACEHOLDER
-  # To enable deployment, you need to set up secrets in your GitHub Repository
-  # example for Render:
-  deploy:
     if: github.ref == 'refs/heads/main'
-    needs: build
-    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.build-image.outputs.image }}
+
     steps:
-      - name: Deploy Placeholder
-        run: echo "Ready for AWS Deployment"
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push Docker image
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  # ─────────────────────────────────────────────
+  # JOB 3: Deploy to ECS Fargate
+  # ─────────────────────────────────────────────
+  deploy:
+    name: Deploy to ECS
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy API Service (force new deployment)
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.API_SERVICE }} \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Deploy Watcher Service (force new deployment)
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.WATCHER_SERVICE }} \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Wait for API service to stabilize
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.API_SERVICE }} \
+            --region ${{ env.AWS_REGION }}
+          echo "✅ API Service deployed and stable"
+
+      - name: Wait for Watcher service to stabilize
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.WATCHER_SERVICE }} \
+            --region ${{ env.AWS_REGION }}
+          echo "✅ Watcher Service deployed and stable"

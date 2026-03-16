@@ -1,17 +1,42 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-.env
-.venv
+.venv/
 env/
 venv/
 ENV/
-data/
+
+# IDE
 .vscode/
 .agent/
+
+# Secrets — NEVER commit
+.env
+
+# Generated outputs
+data/
 *.docx
 *.wav
+*.mp3
+*.m4a
+*.ogg
 transcript_*.txt
+report_v*.html
 *.log
+
+# Test cache
 .pytest_cache/
 tests/__pycache__/
+
+# CDK
+infra/.venv/
+infra/cdk.out/
+*.zip
+
+# WoundCare Specific
+scriberyte/audio and  chart/
+lambda_layer/python/
+temp_*.txt
+em_verify.txt
+test_storage/

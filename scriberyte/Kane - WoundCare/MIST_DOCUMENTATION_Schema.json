@@ -1,0 +1,227 @@
+{
+  "format": {
+    "type": "json_schema",
+    "name": "mist_therapy_visit_schema",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "Patient Information": {
+          "type": "object",
+          "properties": {
+            "Patient Name": {
+              "type": "string"
+            },
+            "Patient Date of Birth": {
+              "type": "string"
+            },
+            "Date": {
+              "type": "string"
+            },
+            "Physician/Extender": {
+              "type": "string"
+            },
+            "Transcriptionist": {
+              "type": "string"
+            },
+            "Facility": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "Patient Name",
+            "Patient Date of Birth",
+            "Date",
+            "Physician/Extender",
+            "Transcriptionist",
+            "Facility"
+          ],
+          "additionalProperties": false
+        },
+        "Wound Entries": {
+          "type": "array",
+          "description": "Dynamic array of wound entries. Extract exactly as many wounds as are mentioned in the transcript.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "Wound Number": {
+                "type": "string",
+                "description": "The wound number as dictated (e.g., '11', '1', '2')"
+              },
+              "MIST Therapy": {
+                "type": "string",
+                "description": "MIST therapy designation (typically 'MIST')"
+              },
+              "Wound Location": {
+                "type": "string",
+                "description": "Anatomical location of the wound exactly as dictated"
+              },
+              "Outcome": {
+                "type": "string",
+                "description": "Wound outcome status"
+              },
+              "Wound Type": {
+                "type": "string",
+                "description": "Type of wound (e.g., 'Arterial Ulcer', 'Venous Ulcer', 'Pressure Injury')"
+              },
+              "Wound Status": {
+                "type": "string",
+                "description": "Current status of the wound"
+              },
+              "Measurements L x W x D": {
+                "type": "string",
+                "description": "Length x Width x Depth measurements with units (e.g., '4 x 3 x 0.5 cm')"
+              },
+              "Area (sq cm)": {
+                "type": "string",
+                "description": "Surface area in square centimeters"
+              },
+              "Volume (cm3)": {
+                "type": "string",
+                "description": "Volume in cubic centimeters"
+              },
+              "Treatment No.": {
+                "type": "string",
+                "description": "Treatment number for this wound (e.g., '2', '7', '13')"
+              },
+              "Time": {
+                "type": "string",
+                "description": "Duration of MIST treatment (e.g., '4 mins', '5 minutes')"
+              },
+              "Tunnels": {
+                "type": "string",
+                "description": "Number of tunnels or '0' if none"
+              },
+              "Max depth of deepest tunnel (cm)": {
+                "type": "string",
+                "description": "Maximum depth of the deepest tunnel in centimeters"
+              },
+              "Undermining (cm)": {
+                "type": "string",
+                "description": "Undermining measurement in centimeters"
+              },
+              "Stage or grade if applicable": {
+                "type": "string",
+                "description": "Stage or grade of the wound if applicable (e.g., 'Stage 3', 'Unstageable')"
+              },
+              "Exudate Amount": {
+                "type": "string",
+                "description": "Amount of exudate (e.g., 'Minimal', 'Moderate', 'Heavy')"
+              },
+              "Exudate Type": {
+                "type": "string",
+                "description": "Type of exudate (e.g., 'Serous', 'Serosanguineous', 'Purulent')"
+              },
+              "Odor": {
+                "type": "string",
+                "description": "Presence or absence of odor"
+              },
+              "Wound Margin": {
+                "type": "string",
+                "description": "Description of wound margin"
+              },
+              "Periwound": {
+                "type": "string",
+                "description": "Periwound skin condition"
+              },
+              "Necrotic Material": {
+                "type": "string",
+                "description": "Presence and type of necrotic material"
+              },
+              "Granulation": {
+                "type": "string",
+                "description": "Granulation tissue description"
+              },
+              "Tissue Exposed": {
+                "type": "string",
+                "description": "Type of tissue exposed in the wound"
+              },
+              "Debridement": {
+                "type": "string",
+                "description": "Debridement performed or not performed"
+              },
+              "MIST indication": {
+                "type": "string",
+                "description": "Indication for MIST therapy (e.g., 'DTI', '30 days with eschar', 'pain with debridement of slough, eschar, biofilm')"
+              },
+              "Benchmark Justification": {
+                "type": "string",
+                "description": "Justification for benchmark visit (e.g., 'Decreased wound size', 'specific pain decrease', 'decreased devitalized tissue', 'decreased NCF', 'increased granulation tissue')"
+              },
+              "NCF": {
+                "type": "string",
+                "description": "NCF value (e.g., 'FCC', 'NIRS', 'TO')"
+              },
+              "TO Pre": {
+                "type": "string",
+                "description": "Pre-treatment tissue oxygenation value (e.g., '70')"
+              },
+              "TO post": {
+                "type": "string",
+                "description": "Post-treatment tissue oxygenation value (e.g., '20')"
+              },
+              "Treatment performed": {
+                "type": "string",
+                "description": "Details of the MIST treatment performed"
+              },
+              "PT specific comments/documentation": {
+                "type": "string",
+                "description": "Patient-specific comments and documentation for MIST therapy"
+              }
+            },
+            "required": [
+              "Wound Number",
+              "MIST Therapy",
+              "Wound Location",
+              "Outcome",
+              "Wound Type",
+              "Wound Status",
+              "Measurements L x W x D",
+              "Area (sq cm)",
+              "Volume (cm3)",
+              "Treatment No.",
+              "Time",
+              "Tunnels",
+              "Max depth of deepest tunnel (cm)",
+              "Undermining (cm)",
+              "Stage or grade if applicable",
+              "Exudate Amount",
+              "Exudate Type",
+              "Odor",
+              "Wound Margin",
+              "Periwound",
+              "Necrotic Material",
+              "Granulation",
+              "Tissue Exposed",
+              "Debridement",
+              "MIST indication",
+              "Benchmark Justification",
+              "NCF",
+              "TO Pre",
+              "TO post",
+              "Treatment performed",
+              "PT specific comments/documentation"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "Physician Recommendation Details": {
+          "type": "string",
+          "description": "Physician recommendation details section containing detailed procedure documentation and clinical notes"
+        },
+        "Provider Comments": {
+          "type": "string",
+          "description": "Provider comments section containing detailed procedure documentation and clinical notes"
+        }
+      },
+      "required": [
+        "Patient Information",
+        "Wound Entries",
+        "Physician Recommendation Details",
+        "Provider Comments"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
